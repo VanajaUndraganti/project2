@@ -5,28 +5,23 @@
  * import directly from '@anthropic-ai/claude-agent-sdk'
  */
 
-// Analysis result schemas and types
 export {
+  SeveritySchema,
   CodeQualityResultSchema,
   TestCoverageResultSchema,
   RefactoringSuggestionSchema,
-  CodeQualityResultJSONSchema,
-  TestCoverageResultJSONSchema,
-  RefactoringSuggestionJSONSchema
 } from './analysis-results.js';
+
 export type {
+  Severity,
   CodeQualityResult,
   TestCoverageResult,
-  RefactoringSuggestion
+  RefactoringSuggestion,
 } from './analysis-results.js';
 
-// Report schemas and types
 export {
   ReviewReportSchema,
-  ReviewReportJSONSchema
+  ReviewReportJSONSchema,
 } from './report-types.js';
-export type { ReviewReport } from './report-types.js';
 
-// Comprehensive wildcard exports
-export * from './analysis-results.js';
-export * from './report-types.js';
+export type { ReviewReport } from './report-types.js';
