@@ -1,185 +1,133 @@
-import { ReviewReport } from '../types/report-types';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { ReviewReport } from '../types/report-types.js';
 
-/**
- * Report Generator
- * Converts ReviewReport to various output formats (Markdown, HTML, JSON)
- */
 export class ReportGenerator {
-  /**
-   * Generate a Markdown report for PR comments
-   */
-  generateMarkdownReport(report: ReviewReport): string {
-    const { summary, recommendations, fileReviews } = report;
+  private readonly outputDir: string;
 
-    const formattedRecs = recommendations.slice(0, 5).map((rec, idx) => {
-      const emoji = {
-        critical: '🚨',
-        high: '⚠️',
-        medium: '📝',
-        low: '💡'
-      }[rec.priority];
-
-      return `${idx + 1}. ${emoji} **${rec.category}**: ${rec.description}
-   - Files: ${rec.files.join(', ')}`;
-    }).join('\n\n');
-
-    const formattedFiles = fileReviews.map(review => {
-      const { file, codeQuality, testCoverage, refactorings } = review;
-
-      const issueList = codeQuality.issues.slice(0, 3)
-        .map(i => `  - Line ${i.line}: \`${i.severity}\` ${i.description}`)
-        .join('\n');
-
-      const testList = testCoverage.untestedPaths.slice(0, 2)
-        .map(p => `  - \`${p.location}\` (${p.priority} priority)`)
-        .join('\n');
-
-      const refactorList = refactorings.suggestions.slice(0, 2)
-        .map(s => `  - **${s.type}**: ${s.description}`)
-        .join('\n');
-
-      return `### 📄 \`${file}\`
-
-**Quality Score:** ${codeQuality.overallScore}/100 | **Coverage:** ~${testCoverage.coverageEstimate}%
-
-#### Issues (${codeQuality.issues.length})
-${issueList || '  None found'}
-${codeQuality.issues.length > 3 ? `\n  *...and ${codeQuality.issues.length - 3} more*` : ''}
-
-#### Test Gaps (${testCoverage.untestedPaths.length})
-${testList || '  None found'}
-${testCoverage.untestedPaths.length > 2 ? `\n  *...and ${testCoverage.untestedPaths.length - 2} more*` : ''}
-
-#### Refactoring Opportunities (${refactorings.suggestions.length})
-${refactorList || '  None found'}
-${refactorings.suggestions.length > 2 ? `\n  *...and ${refactorings.suggestions.length - 2} more*` : ''}`;
-    }).join('\n\n---\n\n');
-
-    return `# 🔍 Code Review Report
-
-## Summary
-
-| Metric | Value |
-|--------|-------|
-| **Overall Score** | ${summary.overallScore}/100 |
-| **Files Reviewed** | ${summary.totalFiles} |
-| **Critical Issues** | ${summary.criticalIssues} |
-| **High Priority Tests** | ${summary.highPriorityTests} |
-| **Refactoring Opportunities** | ${summary.refactoringOpportunities} |
-
-## 🎯 Top Recommendations
-
-${formattedRecs || 'No recommendations at this time.'}
-
-## 📁 File Details
-
-${formattedFiles}
-
----
-
-*Generated at ${report.metadata.analyzedAt} • Duration: ${report.metadata.duration}ms*
-`;
+  constructor(outputDir: string = './reports') {
+    this.outputDir = path.resolve(process.cwd(), outputDir);
   }
 
-  /**
-   * Generate an HTML report for web display
-   */
-  generateHTMLReport(report: ReviewReport): string {
-    const { summary, recommendations, metadata } = report;
+  async generateReports(report: ReviewReport): Promise<void> {
+    // Ensure the reports/ directory exists
+    await fs.mkdir(this.outputDir, { recursive: true });
 
-    const recList = recommendations.slice(0, 5).map(r => `
-      <li class="rec-${r.priority}">
-        <span class="priority">[${r.priority.toUpperCase()}]</span>
-        <strong>${r.category}</strong>: ${r.description}
-        <br><small>Files: ${r.files.join(', ')}</small>
-      </li>
-    `).join('');
+    // Generate formatted contents
+    const jsonContent = this.generateJson(report);
+    const mdContent = this.generateMarkdown(report);
+    const htmlContent = this.generateHtml(report, mdContent);
 
+    // Save files as specified: report.json, report.md, and report.html
+    await fs.writeFile(path.join(this.outputDir, 'report.json'), jsonContent, 'utf-8');
+    await fs.writeFile(path.join(this.outputDir, 'report.md'), mdContent, 'utf-8');
+    await fs.writeFile(path.join(this.outputDir, 'report.html'), htmlContent, 'utf-8');
+
+    console.log(`Report files successfully saved to: ${this.outputDir}`);
+  }
+
+  private generateJson(report: ReviewReport): string {
+    return JSON.stringify(report, null, 2);
+  }
+
+  private generateMarkdown(report: ReviewReport): string {
+    const { pullRequest, summary, fileReviews, recommendations, metadata } = report;
+
+    let md = `# Pull Request Review Report\n\n`;
+    md += `**Repository:** \`${pullRequest.owner}/${pullRequest.repo}\`  \n`;
+    md += `**PR Number:** #${pullRequest.number}  \n`;
+    md += `**Analyzed At:** ${metadata?.analyzedAt || new Date().toISOString()}  \n`;
+    md += `**Duration:** ${metadata?.duration ? `${metadata.duration}ms` : 'N/A'}\n\n`;
+
+    md += `---  \n\n`;
+    md += `## Executive Summary\n\n`;
+    if (summary) {
+      md += `- **Total Files Reviewed:** ${summary.totalFiles ?? 'N/A'}\n`;
+      md += `- **Overall Code Quality Score:** ${summary.overallScore ?? 'N/A'}/100\n`;
+      md += `- **Critical Issues Found:** ${summary.criticalIssues ?? 0}\n`;
+      md += `- **High Priority Tests Needed:** ${summary.highPriorityTests ?? 0}\n`;
+      md += `- **Refactoring Opportunities:** ${summary.refactoringOpportunities ?? 0}\n\n`;
+    }
+
+    if (recommendations && recommendations.length > 0) {
+      md += `## Key Recommendations\n\n`;
+      recommendations.forEach((rec: any, index: number) => {
+        md += `${index + 1}. ${typeof rec === 'string' ? rec : rec.description || JSON.stringify(rec)}\n`;
+      });
+      md += `\n`;
+    }
+
+    if (fileReviews && fileReviews.length > 0) {
+      md += `## File Reviews\n\n`;
+      fileReviews.forEach((file: any) => {
+        md += `### File: \`${file.filename || file.filePath || 'Unknown'}\`\n\n`;
+        if (file.status) md += `**Status:** ${file.status}\n\n`;
+        
+        if (file.issues && file.issues.length > 0) {
+          md += `#### Code Quality & Security Issues\n`;
+          file.issues.forEach((issue: any) => {
+            md += `- **[${issue.severity || 'INFO'}]** ${issue.message || issue.description}\n`;
+          });
+          md += `\n`;
+        }
+
+        if (file.testCoverage) {
+          md += `#### Test Coverage Analysis\n`;
+          md += `${typeof file.testCoverage === 'string' ? file.testCoverage : JSON.stringify(file.testCoverage, null, 2)}\n\n`;
+        }
+
+        if (file.refactorings && file.refactorings.length > 0) {
+          md += `#### Refactoring Suggestions\n`;
+          file.refactorings.forEach((ref: any) => {
+            md += `- ${typeof ref === 'string' ? ref : ref.suggestion || ref.description}\n`;
+          });
+          md += `\n`;
+        }
+      });
+    }
+
+    return md;
+  }
+
+  private generateHtml(report: ReviewReport, markdownContent: string): string {
+    const title = `PR Review Report - ${report.pullRequest.owner}/${report.pullRequest.repo} #${report.pullRequest.number}`;
+    
+    // Clean formatted HTML rendering
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Code Review Report</title>
+  <title>${title}</title>
   <style>
-    * { box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      max-width: 1000px;
-      margin: 0 auto;
-      padding: 24px;
-      background: #f8f9fa;
-      color: #212529;
-    }
-    h1 { color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 12px; }
-    .summary {
-      background: white;
-      padding: 24px;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      margin: 24px 0;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 16px;
-    }
-    .metric { text-align: center; }
-    .metric-value { font-size: 2em; font-weight: bold; color: #3498db; }
-    .metric-label { color: #6c757d; font-size: 0.9em; }
-    ul { list-style: none; padding: 0; }
-    li { padding: 12px; margin: 8px 0; border-radius: 4px; background: white; }
-    .rec-critical { border-left: 4px solid #e74c3c; }
-    .rec-high { border-left: 4px solid #f39c12; }
-    .rec-medium { border-left: 4px solid #3498db; }
-    .rec-low { border-left: 4px solid #27ae60; }
-    .priority { font-weight: bold; margin-right: 8px; }
-    .rec-critical .priority { color: #e74c3c; }
-    .rec-high .priority { color: #f39c12; }
-    .rec-medium .priority { color: #3498db; }
-    .rec-low .priority { color: #27ae60; }
-    footer { text-align: center; color: #6c757d; margin-top: 32px; font-size: 0.9em; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 900px; margin: 0 auto; padding: 20px; }
+    h1 { color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+    h2 { color: #34495e; margin-top: 30px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+    h3 { color: #16a085; }
+    code { background: #f4f4f4; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
+    pre { background: #f4f4f4; padding: 15px; border-radius: 5px; overflow-x: auto; }
+    ul { padding-left: 20px; }
+    li { margin-bottom: 8px; }
+    .card { background: #f9f9f9; border-left: 4px solid #3498db; padding: 15px; margin-bottom: 20px; border-radius: 0 4px 4px 0; }
   </style>
 </head>
 <body>
-  <h1>🔍 Code Review Report</h1>
-  
-  <div class="summary">
-    <div class="metric">
-      <div class="metric-value">${summary.overallScore}</div>
-      <div class="metric-label">Overall Score</div>
-    </div>
-    <div class="metric">
-      <div class="metric-value">${summary.totalFiles}</div>
-      <div class="metric-label">Files Reviewed</div>
-    </div>
-    <div class="metric">
-      <div class="metric-value">${summary.criticalIssues}</div>
-      <div class="metric-label">Critical Issues</div>
-    </div>
-    <div class="metric">
-      <div class="metric-value">${summary.highPriorityTests}</div>
-      <div class="metric-label">Tests Needed</div>
-    </div>
-    <div class="metric">
-      <div class="metric-value">${summary.refactoringOpportunities}</div>
-      <div class="metric-label">Refactorings</div>
-    </div>
+  <div class="card">
+    <h1>Code Review Report</h1>
+    <p><strong>Repository:</strong> ${report.pullRequest.owner}/${report.pullRequest.repo}</p>
+    <p><strong>PR Number:</strong> #${report.pullRequest.number}</p>
   </div>
-
-  <h2>🎯 Top Recommendations</h2>
-  <ul>${recList || '<li>No recommendations at this time.</li>'}</ul>
-
-  <footer>
-    Generated at ${metadata.analyzedAt} • Duration: ${metadata.duration}ms
-  </footer>
+  <pre>${this.escapeHtml(markdownContent)}</pre>
 </body>
 </html>`;
   }
 
-  /**
-   * Generate formatted JSON report
-   */
-  generateJSONReport(report: ReviewReport): string {
-    return JSON.stringify(report, null, 2);
+  private escapeHtml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 }
-
