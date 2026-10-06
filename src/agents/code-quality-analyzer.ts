@@ -5,6 +5,9 @@ export const codeQualityAnalyzer: AgentDefinition = {
     'Analyzes pull request code for quality, maintainability, correctness, and security issues.',
   model: 'inherit',
   tools: [
+    'Read',
+    'Grep',
+    'Glob',
     'mcp__eslint__lint',
     'Skill',
   ],
@@ -36,4 +39,3 @@ Focus only on issues that are relevant to the changed code.
 Return your findings in the required structured output format.
 `,
 };
-
