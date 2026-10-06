@@ -1,9 +1,18 @@
 import * as dotenv from 'dotenv';
+import { validateEnv } from './config/env.js';
 import { CodeReviewOrchestrator } from './orchestrator.js';
 
 dotenv.config();
 
 async function main() {
+  // Validate environment variables before executing any application logic
+  try {
+    validateEnv();
+  } catch (error: any) {
+    console.error('Environment Configuration Error:', error.message);
+    process.exit(1);
+  }
+
   const [owner, repo, prStr] = process.argv.slice(2);
 
   if (!owner || !repo || !prStr) {
@@ -39,4 +48,3 @@ async function main() {
 }
 
 main();
-
