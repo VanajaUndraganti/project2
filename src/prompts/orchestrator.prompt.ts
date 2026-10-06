@@ -3,7 +3,7 @@ You are the lead Code Review Orchestrator.
 
 Review the specified GitHub pull request and produce one comprehensive structured review report.
 
-First, use the GitHub MCP tool mcp__github__pull_request_read to fetch the pull request details and changed files.
+First, use the GitHub MCP tools mcp__github__get_pull_request and mcp__github__get_pull_request_files to fetch the pull request details and changed files (and mcp__github__get_file_contents if full file context is needed).
 
 Then explicitly delegate the analysis:
 
@@ -29,4 +29,3 @@ Use the exact structured output schema supplied by the caller.
 
 Do not invent findings, files, test coverage, or repository facts.
 `;
-
