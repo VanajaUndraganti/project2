@@ -4,7 +4,7 @@ export const testCoverageAnalyzer: AgentDefinition = {
   description:
     'Analyzes pull request changes for test coverage, missing tests, and test quality.',
   model: 'inherit',
-  tools: [],
+  tools: ['Read', 'Grep', 'Glob', 'Skill'],
   prompt: `
 You are the Test Coverage Analyzer.
 
@@ -38,4 +38,3 @@ Base your analysis only on the pull request changes and available repository inf
 Return your findings in the required structured output format.
 `,
 };
-
