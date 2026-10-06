@@ -55,8 +55,16 @@ Return only the final structured ReviewReport.
         permissionMode: 'dontAsk',
         mcpServers: mcpServersConfig,
         allowedTools: [
-          'mcp__github__pull_request_read',
+          'mcp__github__get_pull_request',
+          'mcp__github__get_pull_request_files',
+          'mcp__github__get_file_contents',
+          'mcp__eslint__lint-files',
+          'mcp__eslint__lint',
           'Task',
+          'Read',
+          'Grep',
+          'Glob',
+          'Skill',
         ],
         agents: {
           'code-quality-analyzer': codeQualityAnalyzer,
@@ -140,4 +148,3 @@ Return only the final structured ReviewReport.
     };
   }
 }
-
