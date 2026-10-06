@@ -4,7 +4,7 @@ export const refactoringSuggester: AgentDefinition = {
   description:
     'Identifies opportunities to improve code structure, readability, maintainability, and design.',
   model: 'inherit',
-  tools: [],
+  tools: ['Read', 'Grep', 'Glob', 'Skill'],
   prompt: `
 You are the Refactoring Suggester.
 
@@ -39,4 +39,3 @@ Focus on practical improvements related to the changed code.
 Return your findings in the required structured output format.
 `,
 };
-
