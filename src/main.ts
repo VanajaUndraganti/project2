@@ -1,7 +1,7 @@
 import * as dotenv from 'dotenv';
 import { validateEnv } from './config/env.js';
 import { CodeReviewOrchestrator } from './orchestrator.js';
-import { ReportGenerator } from './reporters/report-generator.js';
+import { ReportGenerator } from './utils/report-generator.js';
 
 dotenv.config();
 
