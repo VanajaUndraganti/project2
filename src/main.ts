@@ -6,25 +6,26 @@ import { ReportGenerator } from './reporters/report-generator.js';
 dotenv.config();
 
 async function main() {
-  // Validate environment variables before executing any application logic
+  // 1. Startup environment validation
   try {
     validateEnv();
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`Startup Error: ${message}`);
     console.error(
-      'Hint: Please check your .env file and ensure GITHUB_TOKEN and ANTHROPIC_API_KEY are configured.'
+      'Hint: Please check your .env file and ensure GITHUB_TOKEN and ANTHROPIC_API_KEY are properly configured.'
     );
     process.exit(1);
   }
 
+  // 2. Parse command-line arguments
   const [owner, repo, prStr] = process.argv.slice(2);
 
   if (!owner || !repo || !prStr) {
     console.error(
       'Usage: npm run dev -- <owner> <repo> <pr-number>'
     );
-    console.error('Hint: Example command: npm run dev -- facebook react 12345');
+    console.error('Hint: Example usage: npm run dev -- danielguerra1 simple-todo-app 1');
     process.exit(1);
   }
 
@@ -32,7 +33,7 @@ async function main() {
 
   if (!Number.isInteger(prNumber) || prNumber <= 0) {
     console.error('PR number must be a positive integer.');
-    console.error('Hint: Ensure the PR number is a number greater than 0.');
+    console.error('Hint: Provide a valid PR number greater than 0.');
     process.exit(1);
   }
 
@@ -47,16 +48,16 @@ async function main() {
       prNumber
     );
 
-    // Instantiate ReportGenerator and save reports in JSON, Markdown, and HTML formats
+    // 3. Generate and save reports to reports/ (report.json, report.md, report.html)
     const reportGenerator = new ReportGenerator();
     await reportGenerator.generateReports(report);
 
-    console.log('Review completed successfully. Reports saved to output directory.');
+    console.log('Review process completed successfully.');
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`Review Failed: ${errorMessage}`);
+    console.error(`Review Execution Error: ${errorMessage}`);
     console.error(
-      'Hint: Verify that the specified owner, repo, and PR number exist and that your GITHUB_TOKEN has access permissions.'
+      'Hint: Verify that the specified owner, repository, and PR number exist and your GITHUB_TOKEN has access permissions.'
     );
     process.exit(1);
   }
